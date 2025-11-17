@@ -1,24 +1,627 @@
-<!DOCTYPE html>
+<!--
+  Paz Visible — Frontend Profesional (Single-file)
+  Guardar como: index.html
+  Qué incluye:
+  - UI moderna con Tailwind (Play CDN)
+  - Gráficas con Chart.js
+  - Mock data + localStorage (funciona sin backend)
+  - Autenticación ligera (localStorage)
+  - Monitor territorial, Foros, Encuestas, Red de Veedores
+  - Export CSV, búsqueda, filtros, accesibilidad básica
+  Nota: Para producción reemplazar Play CDN por build de Tailwind y mover lógica JS a módulos.
+-->
+<!doctype html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tarjeta de presentacion</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Paz Visible — Territorio Activo (Frontend)</title>
+
+  <!-- Tailwind Play CDN (rápido para prototipo) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js para gráficos -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Pequeños ajustes */
+    .card { @apply bg-white rounded-2xl shadow p-4; }
+    .muted { color: #6b7280; } /* gray-500 */
+    .progress-bg { background: linear-gradient(90deg,var(--tw-gradient-stops)); }
+    /* Accessibility focus */
+    :focus { outline: 3px solid rgba(59,130,246,.25); outline-offset: 2px; }
+  </style>
 </head>
-<body>
+<body class="bg-slate-50 text-slate-800 antialiased">
 
+  <!-- App container -->
+  <div class="min-h-screen flex flex-col lg:flex-row">
 
-    <div>
-        <h1>Joel Roa</h1>
-        
-        <img src="https:/fifpro.org/media/fhmfhvkx/messi-world-cup.jpg?rxy=0.48356841796117644,0.31512414378031967&width=1600&height=1024&rnd=133210253587130000" alt="Foto de perfil">
+    <!-- SIDEBAR -->
+    <aside class="w-full lg:w-80 p-6 bg-gradient-to-b from-sky-700 to-indigo-700 text-white">
+      <div class="flex items-center mb-6">
+        <div class="rounded-full bg-white/20 w-12 h-12 flex items-center justify-center mr-3">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg font-semibold">Paz Visible</h1>
+          <p class="text-xs opacity-90">Territorio Activo — Plataforma de participación</p>
+        </div>
+      </div>
 
-        <p>Desarrollador web</p>
-        
-    
-    </div>
+      <nav aria-label="Principal" class="space-y-1">
+        <button class="w-full text-left nav-btn py-2 px-3 rounded flex items-center gap-3 bg-white/10" data-view="monitor">Monitor territorial</button>
+        <button class="w-full text-left nav-btn py-2 px-3 rounded flex items-center gap-3 hover:bg-white/5" data-view="foros">Foros territoriales</button>
+        <button class="w-full text-left nav-btn py-2 px-3 rounded flex items-center gap-3 hover:bg-white/5" data-view="encuestas">Encuestas</button>
+        <button class="w-full text-left nav-btn py-2 px-3 rounded flex items-center gap-3 hover:bg-white/5" data-view="veedores">Red de veedores</button>
+        <button class="w-full text-left nav-btn py-2 px-3 rounded flex items-center gap-3 hover:bg-white/5" data-view="formacion">Formación</button>
+      </nav>
 
+      <div class="mt-6 pt-4 border-t border-white/10">
+        <div id="userBox" class="flex items-center gap-3">
+          <!-- filled by JS -->
+        </div>
+        <div class="mt-3 text-xs muted">Accesibilidad: SMS, audio y multilingüe (prototipo)</div>
+      </div>
 
-    
+      <div class="mt-6 text-xs muted">
+        <strong>Ejecuta sin servidor:</strong>
+        Datos guardados en <code>localStorage</code>.
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="flex-1 p-6">
+      <!-- Header top actions -->
+      <header class="flex items-center justify-between mb-6">
+        <div>
+          <h2 id="viewTitle" class="text-2xl font-semibold">Monitor territorial</h2>
+          <p class="muted text-sm">Transparencia, participación y control social en tus territorios.</p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <input id="search" class="border rounded px-3 py-2" placeholder="Buscar municipio o proyecto" aria-label="Buscar" />
+          <button id="exportCsv" class="px-3 py-2 rounded bg-sky-600 text-white">Exportar CSV</button>
+          <button id="openAuth" class="px-3 py-2 rounded border border-slate-200">Iniciar sesión</button>
+        </div>
+      </header>
+
+      <!-- Content area -->
+      <section id="contentArea" class="space-y-6">
+
+        <!-- MONITOR -->
+        <section id="monitor" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Left: indicadores (toma 2 cols) -->
+          <div class="lg:col-span-2 space-y-4">
+            <div class="card">
+              <div class="flex items-start justify-between">
+                <div>
+                  <h3 class="font-semibold">Indicadores de implementación</h3>
+                  <p class="muted text-sm">Proyectos PDET y recursos por municipio</p>
+                </div>
+                <div class="text-xs muted">Actualizado: <span id="lastUpdate">—</span></div>
+              </div>
+
+              <div id="monitorList" class="mt-4 space-y-3">
+                <!-- Cards injected by JS -->
+              </div>
+            </div>
+
+            <div class="card">
+              <h4 class="font-semibold mb-2">Mapa de prioridad (resumen)</h4>
+              <p class="muted text-sm mb-3">Gráfico de avance agregado por departamento</p>
+              <canvas id="chartProgress" height="140"></canvas>
+            </div>
+          </div>
+
+          <!-- Right column -->
+          <aside class="space-y-4">
+            <div class="card">
+              <h4 class="font-semibold">Canal de participación</h4>
+              <p class="muted text-sm">Foros, encuestas y peticiones con trazabilidad</p>
+              <div class="mt-3 space-y-2">
+                <button id="btnNewForum" class="w-full text-left px-3 py-2 border rounded">Crear foro territorial</button>
+                <button id="btnNewConv" class="w-full text-left px-3 py-2 border rounded">Crear convocatoria / petición</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <h4 class="font-semibold">Formación ciudadana</h4>
+              <p class="muted text-sm">Curso muestra: Derechos y participación</p>
+              <button id="btnOpenCourse" class="mt-3 w-full px-3 py-2 rounded bg-indigo-600 text-white">Iniciar módulo</button>
+            </div>
+
+            <div class="card">
+              <h4 class="font-semibold">Accesibilidad</h4>
+              <ul class="mt-2 text-sm muted list-disc list-inside">
+                <li>Versión SMS (simulada)</li>
+                <li>Audio-navegación (botón)</li>
+                <li>Multilingüe (ES/EN ejemplo)</li>
+              </ul>
+              <div class="mt-3 flex gap-2">
+                <button id="btnSimSms" class="px-2 py-1 border rounded text-xs">Simular SMS</button>
+                <button id="btnAudio" class="px-2 py-1 border rounded text-xs">Leer página</button>
+              </div>
+            </div>
+          </aside>
+        </section>
+
+        <!-- FOROS -->
+        <section id="foros" class="hidden space-y-4">
+          <div class="card">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-semibold">Foros territoriales</h3>
+                <p class="muted text-sm">Espacio para propuestas y discusiones por municipio</p>
+              </div>
+              <div class="muted text-sm">Foros activos: <span id="countForos">0</span></div>
+            </div>
+
+            <div class="mt-4" id="forosList">
+              <!-- threads -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ENCUESTAS -->
+        <section id="encuestas" class="hidden space-y-4">
+          <div class="card">
+            <h3 class="font-semibold">Encuestas y votaciones</h3>
+            <p class="muted text-sm">Permite priorizar necesidades locales</p>
+
+            <div id="encuestasList" class="mt-4 space-y-3"></div>
+          </div>
+        </section>
+
+        <!-- VEEDORES -->
+        <section id="veedores" class="hidden">
+          <div class="card">
+            <h3 class="font-semibold">Red de veedores</h3>
+            <p class="muted text-sm">Registro y seguimiento ciudadano</p>
+
+            <div id="veedoresList" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <!-- veedores -->
+            </div>
+          </div>
+        </section>
+
+        <!-- FORMACION -->
+        <section id="formacion" class="hidden">
+          <div class="card">
+            <h3 class="font-semibold">Módulo: Derechos y Participación</h3>
+            <p class="muted text-sm">Muestra de formación gamificada (prototipo)</p>
+            <div class="mt-4">
+              <ol class="list-decimal list-inside space-y-2">
+                <li>Lección 1 — ¿Qué son los acuerdos de paz?</li>
+                <li>Lección 2 — Mecanismos de participación</li>
+                <li>Lección 3 — Herramientas digitales para exigir rendición de cuentas</li>
+              </ol>
+              <button id="btnCert" class="mt-4 px-3 py-2 rounded bg-emerald-600 text-white">Obtener certificación (demo)</button>
+            </div>
+          </div>
+        </section>
+
+      </section>
+
+      <!-- Footer -->
+      <footer class="mt-8 text-sm muted">Paz Visible • Prototipo frontend • Datos de ejemplo almacenados localmente</footer>
+    </main>
+  </div>
+
+  <!-- Modal templates (hidden) -->
+  <div id="modalRoot"></div>
+
+  <script>
+  /******************************************
+   * Paz Visible — Frontend JS (single file)
+   * Estructura:
+   * - state inicial (mock data)
+   * - renderers para cada vista
+   * - eventos y utilidades (localStorage, CSV, speech)
+   ******************************************/
+
+  // ---------- Estado (mock data) ----------
+  const state = {
+    user: null,
+    users: JSON.parse(localStorage.getItem('pv_users')) || [{user:'admin',pass:'admin',name:'Administrador'}],
+    monitor: JSON.parse(localStorage.getItem('pv_monitor')) || [
+      { id:1, municipio:'Soacha', proyecto:'PDET Vías', estado:'en_ejecucion', recursos:50000000, avance:62, updated_at: new Date().toISOString() },
+      { id:2, municipio:'Tumaco', proyecto:'Casa de la Cultura', estado:'planeado', recursos:20000000, avance:12, updated_at: new Date().toISOString() },
+      { id:3, municipio:'Apartadó', proyecto:'Agua Potable', estado:'en_ejecucion', recursos:15000000, avance:45, updated_at: new Date().toISOString() }
+    ],
+    foros: JSON.parse(localStorage.getItem('pv_foros')) || [
+      { id:1, municipio:'Apartadó', titulo:'Seguridad en veredas', mensajes:[{user:'Líder local',text:'Necesitamos patrullajes mixtos.'}], created_at: new Date().toISOString() }
+    ],
+    encuestas: JSON.parse(localStorage.getItem('pv_encuestas')) || [
+      { id:1, titulo:'Prioridad: Salud o educación', opciones:['Salud','Educación','Infraestructura'], votos:[10,5,2], created_at:new Date().toISOString() }
+    ],
+    veedores: JSON.parse(localStorage.getItem('pv_veedores')) || [
+      { id:1, nombre:'Red Veeduría Norte', region:'Antioquia', contacto:'veeduria@norte.org', anonimizado:false }
+    ]
+  };
+
+  // Guardar estado en localStorage
+  function persist() {
+    localStorage.setItem('pv_users', JSON.stringify(state.users));
+    localStorage.setItem('pv_monitor', JSON.stringify(state.monitor));
+    localStorage.setItem('pv_foros', JSON.stringify(state.foros));
+    localStorage.setItem('pv_encuestas', JSON.stringify(state.encuestas));
+    localStorage.setItem('pv_veedores', JSON.stringify(state.veedores));
+  }
+
+  // ---------- Utilidades ----------
+  function el(q) { return document.querySelector(q); }
+  function els(q) { return Array.from(document.querySelectorAll(q)); }
+  function fmtMoney(n){ return new Intl.NumberFormat('es-CO').format(n); }
+  function updateTime(){ el('#lastUpdate').textContent = new Date().toLocaleString(); }
+
+  // CSV export of monitor
+  function exportCSV() {
+    const rows = [['municipio','proyecto','estado','recursos','avance','updated_at']];
+    state.monitor.forEach(m => rows.push([m.municipio,m.proyecto,m.estado,m.recursos,m.avance,m.updated_at]));
+    const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'pazvisible_monitor.csv'; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // Speech read
+  function speak(text){
+    if (!('speechSynthesis' in window)) { alert('Speech API no disponible'); return; }
+    const ut = new SpeechSynthesisUtterance(text);
+    ut.lang = 'es-ES';
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(ut);
+  }
+
+  // ---------- Renderers ----------
+  function renderUserBox() {
+    const box = el('#userBox');
+    box.innerHTML = '';
+    if (state.user) {
+      const div = document.createElement('div');
+      div.className = 'w-full flex items-center justify-between';
+      div.innerHTML = `<div>
+        <div class="font-medium">${escapeHtml(state.user.name || state.user.user)}</div>
+        <div class="text-xs muted">Conectado</div>
+      </div>
+      <div>
+        <button id="btnLogout" class="px-2 py-1 rounded bg-white/10">Cerrar</button>
+      </div>`;
+      box.appendChild(div);
+      el('#btnLogout').addEventListener('click', ()=>{ state.user=null; renderUserBox(); });
+    } else {
+      box.innerHTML = `<div class="text-sm">Usuario: <strong>Invitado</strong></div>`;
+    }
+  }
+
+  // escape para seguridad simple
+  function escapeHtml(s = ''){ return String(s).replace(/[&<>"']/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; }); }
+
+  // Monitor list
+  function renderMonitorList(filter = '') {
+    const container = el('#monitorList');
+    container.innerHTML = '';
+    const filt = filter.trim().toLowerCase();
+    const items = state.monitor.filter(m => !filt || (m.municipio + ' ' + m.proyecto).toLowerCase().includes(filt));
+    items.forEach(m => {
+      const div = document.createElement('div');
+      div.className = 'p-3 border rounded-lg bg-slate-50';
+      div.innerHTML = `
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="text-sm font-medium">${escapeHtml(m.municipio)} — ${escapeHtml(m.proyecto)}</div>
+            <div class="text-xs muted">Estado: ${escapeHtml(m.estado)} • Recursos: ${fmtMoney(m.recursos)}</div>
+            <div class="text-xs muted mt-1">Última actualización: ${new Date(m.updated_at).toLocaleString()}</div>
+          </div>
+          <div class="text-sm font-medium">${m.avance}%</div>
+        </div>
+        <div class="mt-3">
+          <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+            <div style="width:${m.avance}%; background: linear-gradient(90deg,#06b6d4,#3b82f6);" class="h-3"></div>
+          </div>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+    updateTime();
+  }
+
+  // Chart: aggregated by estado (average progress by municipio)
+  let chart = null;
+  function renderChart() {
+    const ctx = el('#chartProgress').getContext('2d');
+    const labels = state.monitor.map(m=>m.municipio);
+    const data = state.monitor.map(m=>m.avance);
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{ label:'Avance (%)', data, backgroundColor: 'rgba(59,130,246,0.8)' }] },
+      options: { responsive:true, plugins:{legend:{display:false}} }
+    });
+  }
+
+  // Foros
+  function renderForos() {
+    const list = el('#forosList'); list.innerHTML = '';
+    el('#countForos').textContent = state.foros.length;
+    state.foros.forEach(f => {
+      const div = document.createElement('div'); div.className = 'mb-3 p-3 border rounded bg-white';
+      div.innerHTML = `<div class="flex justify-between items-start">
+          <div><strong>${escapeHtml(f.titulo)}</strong><div class="text-xs muted">${escapeHtml(f.municipio)}</div></div>
+          <div class="text-xs muted">${new Date(f.created_at).toLocaleDateString()}</div>
+        </div>
+        <div class="mt-2 text-sm">${f.mensajes.slice(-1).map(m=>escapeHtml(m.text)).join('')}</div>
+        <div class="mt-3">
+          <input id="msg-${f.id}" placeholder="Escribe un mensaje..." class="w-full border rounded px-2 py-1" />
+          <div class="mt-2 flex gap-2">
+            <button class="px-2 py-1 rounded bg-sky-600 text-white" data-action="reply" data-id="${f.id}">Enviar</button>
+            <button class="px-2 py-1 rounded border" data-action="view" data-id="${f.id}">Ver hilo</button>
+          </div>
+        </div>`;
+      list.appendChild(div);
+    });
+  }
+
+  // Encuestas
+  function renderEncuestas() {
+    const container = el('#encuestasList'); container.innerHTML = '';
+    state.encuestas.forEach(e=>{
+      const total = e.votos.reduce((a,b)=>a+b,0);
+      const div = document.createElement('div'); div.className='p-3 border rounded bg-white';
+      div.innerHTML = `<div class="flex justify-between items-center"><strong>${escapeHtml(e.titulo)}</strong><div class="text-xs muted">${total} votos</div></div>
+        <div class="mt-3 space-y-2">
+          ${e.opciones.map((opt,i)=>`
+            <div class="flex items-center gap-2">
+              <button class="px-2 py-1 border rounded" data-action="vote" data-eid="${e.id}" data-opt="${i}">${escapeHtml(opt)}</button>
+              <div class="text-xs muted">${e.votos[i] || 0} votos</div>
+              <div class="flex-1 h-2 bg-slate-200 rounded ml-3 overflow-hidden"><div style="width:${(e.votos[i]||0)/(total||1)*100}%;" class="h-2 bg-indigo-500"></div></div>
+            </div>
+          `).join('')}
+        </div>`;
+      container.appendChild(div);
+    });
+  }
+
+  // Veedores
+  function renderVeedores() {
+    const container = el('#veedoresList'); container.innerHTML = '';
+    state.veedores.forEach(v=>{
+      const d = document.createElement('div'); d.className='p-3 border rounded bg-white';
+      d.innerHTML = `<strong>${escapeHtml(v.nombre)}</strong><div class="text-xs muted">${escapeHtml(v.region)}</div><div class="text-xs mt-2">${escapeHtml(v.contacto)}</div>`;
+      container.appendChild(d);
+    });
+  }
+
+  // ---------- Eventos y handlers ----------
+  function wireUI() {
+    // Nav
+    els('.nav-btn').forEach(b=>{
+      b.addEventListener('click', ()=> {
+        const view = b.getAttribute('data-view');
+        showView(view);
+      });
+    });
+
+    // Search
+    el('#search').addEventListener('input', e=> {
+      renderMonitorList(e.target.value);
+    });
+
+    // Export CSV
+    el('#exportCsv').addEventListener('click', exportCSV);
+
+    // Auth modal
+    el('#openAuth').addEventListener('click', ()=> showAuthModal());
+
+    // New forum & conv
+    el('#btnNewForum').addEventListener('click', ()=> showCreateForumModal());
+    el('#btnNewConv').addEventListener('click', ()=> showCreateConvocatoriaModal());
+
+    // Course & certification
+    el('#btnOpenCourse').addEventListener('click', ()=> showCourseModal());
+    el('#btnCert').addEventListener('click', ()=> alert('Certificación demo emitida (prototipo)'));
+
+    // Accessibility actions
+    el('#btnSimSms').addEventListener('click', ()=> alert('Simulación SMS enviada (prototipo)'));
+    el('#btnAudio').addEventListener('click', ()=> speak('Bienvenido a Paz Visible. Este es un prototipo de plataforma para participación territorial.'));
+
+    // Modal root click close
+    document.addEventListener('click', (ev)=>{
+      const action = ev.target.getAttribute('data-action');
+      if (action === 'reply') {
+        const id = Number(ev.target.getAttribute('data-id'));
+        const input = el('#msg-' + id);
+        const text = input ? input.value.trim() : '';
+        if (text) {
+          const foro = state.foros.find(f=>f.id===id);
+          foro.mensajes.push({user: (state.user?.name||state.user?.user||'Anon'), text});
+          persist(); renderForos();
+          input.value='';
+          alert('Mensaje enviado (prototipo).');
+        }
+      } else if (action === 'view') {
+        const id = Number(ev.target.getAttribute('data-id'));
+        const foro = state.foros.find(f=>f.id===id);
+        showThreadModal(foro);
+      } else if (action === 'vote') {
+        const eid = Number(ev.target.getAttribute('data-eid'));
+        const opt = Number(ev.target.getAttribute('data-opt'));
+        const enc = state.encuestas.find(x=>x.id===eid);
+        enc.votos[opt] = (enc.votos[opt]||0) + 1;
+        persist(); renderEncuestas();
+        alert('Voto registrado (prototipo).');
+      }
+    });
+  }
+
+  // ---------- Modals (simple) ----------
+  function createModal(html) {
+    const root = el('#modalRoot');
+    root.innerHTML = `<div class="fixed inset-0 z-50 flex items-center justify-center">
+      <div class="absolute inset-0 bg-black/40"></div>
+      <div class="relative z-10 w-full max-w-2xl p-4">${html}<div class="mt-4 text-right"><button id="modalClose" class="px-3 py-1 rounded bg-slate-200">Cerrar</button></div></div>
+    </div>`;
+    el('#modalClose').addEventListener('click', ()=> root.innerHTML='');
+  }
+
+  function showAuthModal() {
+    createModal(`
+      <h3 class="text-lg font-semibold mb-2">Iniciar sesión / Registrarse</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <div class="text-sm muted mb-1">Iniciar sesión</div>
+          <input id="m_user" placeholder="Usuario" class="w-full border rounded px-2 py-1" />
+          <input id="m_pass" placeholder="Contraseña" class="w-full border rounded px-2 py-1 mt-2" />
+          <div class="mt-2 flex gap-2">
+            <button id="m_login" class="px-3 py-1 rounded bg-sky-600 text-white">Entrar</button>
+          </div>
+        </div>
+        <div>
+          <div class="text-sm muted mb-1">Registrarse</div>
+          <input id="r_user" placeholder="Usuario" class="w-full border rounded px-2 py-1" />
+          <input id="r_pass" placeholder="Contraseña" class="w-full border rounded px-2 py-1 mt-2" />
+          <input id="r_name" placeholder="Nombre completo" class="w-full border rounded px-2 py-1 mt-2" />
+          <div class="mt-2">
+            <button id="m_reg" class="px-3 py-1 rounded bg-emerald-600 text-white">Crear cuenta</button>
+          </div>
+        </div>
+      </div>
+    `);
+
+    el('#m_login').addEventListener('click', ()=>{
+      const u = el('#m_user').value.trim(), p = el('#m_pass').value.trim();
+      const found = state.users.find(x=>x.user===u && x.pass===p);
+      if (!found) return alert('Credenciales inválidas');
+      state.user = found;
+      persist(); renderUserBox();
+      el('#modalRoot').innerHTML='';
+      alert('Sesión iniciada');
+    });
+
+    el('#m_reg').addEventListener('click', ()=>{
+      const u = el('#r_user').value.trim(), p = el('#r_pass').value.trim(), n = el('#r_name').value.trim();
+      if (!u || !p) return alert('Usuario y contraseña obligatorios');
+      if (state.users.some(x=>x.user===u)) return alert('Usuario ya existe');
+      const nu = {user:u,pass:p,name:n};
+      state.users.push(nu); persist(); alert('Cuenta creada, ya puedes iniciar sesión');
+    });
+  }
+
+  function showCreateForumModal() {
+    createModal(`
+      <h3 class="text-lg font-semibold mb-2">Crear foro territorial</h3>
+      <input id="f_municipio" placeholder="Municipio" class="w-full border rounded px-2 py-1" />
+      <input id="f_titulo" placeholder="Título del foro" class="w-full border rounded px-2 py-1 mt-2" />
+      <textarea id="f_msg" placeholder="Mensaje inicial" class="w-full border rounded px-2 py-1 mt-2"></textarea>
+      <div class="mt-3"><button id="f_create" class="px-3 py-1 rounded bg-sky-600 text-white">Crear foro</button></div>
+    `);
+    el('#f_create').addEventListener('click', ()=>{
+      const municipio = el('#f_municipio').value.trim(), titulo = el('#f_titulo').value.trim(), msg = el('#f_msg').value.trim();
+      if (!municipio || !titulo) return alert('Municipio y título son obligatorios');
+      const newF = { id: Date.now(), municipio, titulo, mensajes: [{user: state.user?.name || 'Anon', text: msg}], created_at:new Date().toISOString()};
+      state.foros.push(newF); persist(); renderForos(); el('#modalRoot').innerHTML=''; alert('Foro creado');
+    });
+  }
+
+  function showCreateConvocatoriaModal() {
+    createModal(`
+      <h3 class="text-lg font-semibold mb-2">Crear convocatoria / petición</h3>
+      <input id="c_municipio" placeholder="Municipio" class="w-full border rounded px-2 py-1" />
+      <input id="c_titulo" placeholder="Título" class="w-full border rounded px-2 py-1 mt-2" />
+      <textarea id="c_desc" placeholder="Descripción" class="w-full border rounded px-2 py-1 mt-2"></textarea>
+      <div class="mt-3 flex gap-2"><button id="c_create" class="px-3 py-1 rounded bg-emerald-600 text-white">Crear</button><button id="c_cancel" class="px-3 py-1 rounded border">Cancelar</button></div>
+    `);
+    el('#c_create').addEventListener('click', ()=>{
+      const municipio = el('#c_municipio').value.trim(), titulo = el('#c_titulo').value.trim(), desc = el('#c_desc').value.trim();
+      if (!municipio || !titulo) return alert('Campos obligatorios');
+      // conv se almacena como 'monitor' ejemplo de proceso
+      state.monitor.push({ id: Date.now(), municipio, proyecto: titulo, estado:'planeado', recursos:0, avance:0, updated_at:new Date().toISOString() });
+      persist(); renderMonitorList(); renderChart(); el('#modalRoot').innerHTML=''; alert('Convocatoria creada (mock)');
+    });
+    el('#c_cancel').addEventListener('click', ()=> el('#modalRoot').innerHTML='');
+  }
+
+  function showThreadModal(foro) {
+    createModal(`
+      <h3 class="text-lg font-semibold mb-2">${escapeHtml(foro.titulo)}</h3>
+      <div class="mb-3 text-xs muted">Municipio: ${escapeHtml(foro.municipio)}</div>
+      <div id="threadMsgs" class="space-y-2 max-h-48 overflow-auto p-2 border rounded bg-slate-50"></div>
+      <input id="threadInput" placeholder="Escribe tu mensaje..." class="w-full border rounded px-2 py-1 mt-2" />
+      <div class="mt-2 text-right"><button id="threadSend" class="px-3 py-1 rounded bg-sky-600 text-white">Enviar</button></div>
+    `);
+    function renderThread() {
+      el('#threadMsgs').innerHTML = foro.mensajes.map(m=>`<div class="p-2 rounded bg-white"><strong>${escapeHtml(m.user)}</strong><div class="text-sm">${escapeHtml(m.text)}</div></div>`).join('');
+    }
+    renderThread();
+    el('#threadSend').addEventListener('click', ()=>{
+      const text = el('#threadInput').value.trim();
+      if (!text) return;
+      foro.mensajes.push({user: state.user?.name||'Anon', text});
+      persist(); renderForos(); renderThread(); el('#threadInput').value='';
+    });
+  }
+
+  function showCourseModal() {
+    createModal(`
+      <h3 class="text-lg font-semibold mb-2">Curso: Derechos y participación (demo)</h3>
+      <ol class="list-decimal list-inside space-y-2">
+        <li>Qué son los acuerdos: resumen breve</li>
+        <li>Mecanismos de participación: pasos prácticos</li>
+        <li>Cómo usar la plataforma para exigir rendición de cuentas</li>
+      </ol>
+      <div class="mt-4 text-sm muted">Completa este módulo para recibir una certificación demo.</div>
+      <div class="mt-3 text-right"><button id="courseDone" class="px-3 py-1 rounded bg-emerald-600 text-white">Marcar como completado</button></div>
+    `);
+    el('#courseDone').addEventListener('click', ()=>{
+      el('#modalRoot').innerHTML=''; alert('Módulo marcado como completado. Certificación demo generada.');
+    });
+  }
+
+  // ---------- View management ----------
+  function showView(view) {
+    els('#contentArea section').forEach(s => s.classList.add('hidden'));
+    el('#' + view).classList.remove('hidden');
+    el('#viewTitle').textContent = ({
+      monitor:'Monitor territorial',
+      foros:'Foros territoriales',
+      encuestas:'Encuestas y votaciones',
+      veedores:'Red de veedores',
+      formacion:'Formación ciudadana'
+    })[view] || 'Paz Visible';
+    // Render content for view
+    if (view === 'monitor') { renderMonitorList(el('#search').value); renderChart(); }
+    if (view === 'foros') renderForos();
+    if (view === 'encuestas') renderEncuestas();
+    if (view === 'veedores') renderVeedores();
+    // highlight nav
+    els('.nav-btn').forEach(b => b.classList.remove('bg-white/10'));
+    els('.nav-btn').find(b=>b.getAttribute('data-view')===view)?.classList.add('bg-white/10');
+  }
+
+  // ---------- Initialization ----------
+  function init() {
+    renderUserBox();
+    renderMonitorList();
+    renderChart();
+    renderForos();
+    renderEncuestas();
+    renderVeedores();
+    wireUI();
+    // default view
+    showView('monitor');
+    // attach export CSV
+    el('#exportCsv').addEventListener('click', exportCSV);
+  }
+
+  // Run init
+  init();
+
+  // keyboard a11y: Esc closes modal
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') el('#modalRoot').innerHTML=''; });
+
+  </script>
 </body>
 </html>
